@@ -105,15 +105,26 @@ def get_keyword():
     """    
     return prompt(_SEARCH_FORM)['keywords'].split(';') #will require parsing when accessed
 
-def put_search_list(posts, more):
-    display = [Separator("{:<30}|{:<10}|{:<8}|{:<8}".format('Title', 'Date', 'Score', 'Answers'))]
+def put_q_search_list(posts, more):
+    display = [Separator("{:<30}|{:<25}|{:<8}|{:<8}".format('Title', 'Date', 'Score', 'Answers'))]
     for post in posts:
         item = {}
-        try:
-            answer_count = post['AnswerCount']
-        except:
-            answer_count = "N\A"
-        item['name'] = "{:<30}|{:<10}|{:<8}|{:<8}".format(post['Title'], post['CreationDate'], post['Score'], answer_count)
+        item['name'] = "{:<30}|{:<25}|{:<8}|{:<8}".format(post['Title'], post['CreationDate'], post['Score'], post['AnswerCount'])
+        item['value'] = post['Id']
+        display.append(item)
+    _SELECT_FORM[0]['choices'] = display
+    if more:
+        _SELECT_FORM[0]['choices'].append({'name':'Next Page', 'value': '+'})
+    return prompt(_SELECT_FORM)['post']
+
+def put_a_search_list(posts, more):
+    display = [Separator("{:<25}|{:<8}|{:<80}".format('Date', 'Score', 'Body'))]
+    for post in posts:
+        item = {}
+        body = post['Body']
+        if len(body) > 80:
+            body = body[:79]
+        item['name'] = "{:<25}|{:<8}|{:<80}".format(post['CreationDate'], post['Score'], body)
         item['value'] = post['Id']
         display.append(item)
     _SELECT_FORM[0]['choices'] = display
@@ -139,3 +150,4 @@ def action_menu_select(is_question):
         )
 
     return prompt(_ACTION_MENU)['action']
+

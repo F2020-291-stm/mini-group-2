@@ -17,6 +17,8 @@ class Database:
         dic_post = {}
         dic_post["Id"] = self.pid_generator()
         dic_post["PostTypeId"] = post["type"]
+        if post["type"] == "2":
+            dic_post["ParentId"] = post['qid']
         dic_post["CreationDate"] = datetime.now()
         for attribute in ["Score", "ViewCount", "AnswerCount", "CommentCount", "FavoriteCount"]:
             dic_post[attribute] = 0
@@ -35,17 +37,18 @@ class Database:
         pass
 
     def find_answers(self, pid):
-        #TODO Retrieve all answers that answer pid
-        pass
+        #Retrieve all answers that answer pid
+        #How?
+        #Find all posts whose 'ParentId' is pid
+        return self.posts.find({'ParentId':pid})
 
     def get_post(self, pid):
-        #TODO Retrieve the post that has pid
-        pass
+        #Retrieve the post that has pid
+        return self.posts.find_one({'Id':pid})
 
     def get_user_posts(self, uid):
-        #TODO Retrieve all posts from this uid
-        #Split into two lists: questions and answers
-        pass
+        #Retrieve all posts made by user uid
+        return self.posts.find({'Id':uid})
 
     def tag_updater(self, tags):
         #given a list of tags, check if that tag is in the database
@@ -54,12 +57,16 @@ class Database:
         #"TagName" as the tag, and "Count" set to 0
 
         for tag in tags:
-            #TODO check if the tag exists
+            #check if the tag exists
             exists = False
+            tags = self.tags.find({'TagName': tag})
+            for tag in tags:
+                exists = True
+                count = tag['Count']
 
             if exists:
-                #TODO update count by 1
-                pass 
+                #update count by 1
+                self.tags.update_one({'TagName': tag}, {'$set': {'Count':(count+1)}}) 
             else:
                 #insert new tag
                 Id = self.tid_generator()
@@ -71,28 +78,34 @@ class Database:
         dic_vote = {}
         dic_vote['Id'] = self.vid_generator()
         dic_vote['PostId'] = pid
-        dic_vote['VoteTypeId'] = 2
+        dic_vote['VoteTypeId'] = "2"
         dic_vote['CreationDate'] = datetime.now()
 
         self.votes.insert_one(dic_vote)
 
     def get_user_received_votes(self, uid):
-        #TODO given a uid, return the number of votes they have received
-        pass
+        #Find all posts made by uid, 
+        #Find all votes made on each of those posts
+        #Count all those votes
+        count = 0
 
+        posts = self.get_user_posts(uid)
+        for post in posts:
+            count += self.votes.find({'PostId':post['Id']}).count()
 
-#maybe can combine these three functions
+        return count
+
     def pid_generator(self):
-        #returns a unique post Id
-        #idea: find max post Id and + 1
-        pass
+        obj = self.posts.find().sort('Id',-1).limit(1)
+        for post in obj:
+            return str(int(post['Id'])+1)
 
     def tid_generator(self):
-        #returns a unique tag ID
-        #idea: find max tid Id and + 1
-        pass
+        obj = self.tags.find().sort('Id',-1).limit(1)
+        for tag in obj:
+            return str(int(tag['Id'])+1)
 
     def vid_generator(self):
-        #returns a unique vote Id
-        #idea: find max vid Id and + 1
-        pass
+        obj = self.votes.find().sort('Id',-1).limit(1)
+        for vote in obj:
+            return str(int(vote['Id'])+1)
