@@ -40,7 +40,6 @@ if __name__ == "__main__":
 
     print("Adding posts")
     build_collection(db, 'Posts', ['Title', 'Body'])
-
     print("Adding tags")
     build_collection(db, 'Tags')
 
