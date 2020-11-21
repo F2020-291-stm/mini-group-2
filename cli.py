@@ -89,10 +89,10 @@ def master_menu_select():
     return prompt(_MASTER_MENU)['action']
 
 def write_post():
-    """User is prompted to submit a title and a text body for a post.
+    """User is prompted to submit a title, a text body, and tags for a post.
 
     Returns:
-        Dictionary: Returns a dictionary containing two strings - title and body
+        Dictionary: Returns a dictionary containing three strings - title, body, and tags
     """    
     #user submits a title and a text body
     return prompt(_POST_FORM)
@@ -105,50 +105,37 @@ def get_keyword():
     """    
     return prompt(_SEARCH_FORM)['keywords'].split(';') #will require parsing when accessed
 
-def put_search_list(posts, empty):
-    """Shows user the first five posts that match their search. User can select a post or
-    (if there are more than 5 results) select to move on to the next page.
-
-    Args:
-        posts (list): Contains all posts that match search criteria
-        empty (boolean): Is true if we have 5 or less posts that match criteria
-
-    Returns:
-        Dictionary: Returns a dictionary containing the post that the user selected
-    """
-    display = [Separator("{:<5}|{:<10}|{:<30}|{:<40.40}|{:<15}|{:<5}|{:<5}".format('Pid', 'Date', 'Title', 'Body', 'Poster', 'Votes', 'Answers'))]
+def put_search_list(posts, more):
+    display = [Separator("{:<30}|{:<10}|{:<8}|{:<8}".format('Title', 'Date', 'Score', 'Answers'))]
     for post in posts:
         item = {}
-        if post[6] is not None:
-            item['name'] = "{:<5}|{:<10}|{:<30}|{:<40.40}|{:<15}|{:<5}|{:<5}".format(post[0], post[1], post[2], post[3], post[4], post[5], post[6])
-        else:
-            item['name'] = "{:<5}|{:<10}|{:<30}|{:<40.40}|{:<15}|{:<5}".format(post[0], post[1], post[2], post[3], post[4], post[5])
-        item['value'] = post[0]
+        try:
+            answer_count = post['AnswerCount']
+        except:
+            answer_count = "N\A"
+        item['name'] = "{:<30}|{:<10}|{:<8}|{:<8}".format(post['Title'], post['CreationDate'], post['Score'], answer_count)
+        item['value'] = post['Id']
         display.append(item)
     _SELECT_FORM[0]['choices'] = display
-    if not empty:
+    if more:
         _SELECT_FORM[0]['choices'].append({'name':'Next Page', 'value': '+'})
     return prompt(_SELECT_FORM)['post']
 
-def action_menu_select(show_question_action):
-    """A user is looking at a post. This prompts the user to decide what 
-    to do with the post.
+def action_menu_select(is_question):
+    _ACTION_MENU[0]['choices'] = []
 
-    Args:
-        show_priviledged_actions (boolean): Is true if the user is privileged
-        show_answer_actions ([type]): Is true if the post being viewed is an answer
+    if is_question:
+        _ACTION_MENU[0]['choices'].extend(
+            [
+                'Answer question',
+                'List answers'
+            ]
+        )
+    _ACTION_MENU[0]['choices'].extend(
+            [
+                'Upvote',
+                'Return'
+            ]
+        )
 
-    Returns:
-        Dictionary: Returns a dictionary containing a string of what option was selected
-    """    
-    # Actions for are dependent on the type of post so we build the choices at runtime
-    
-    _ACTION_MENU[0]['choices'].append("Vote") # Vote
-
-    if show_question_action:
-        # Show any answers if its a post
-        _ACTION_MENU[0]['choices'].append('Show answers')
-
-    _ACTION_MENU[0]['choices'].append("Return") # User return to main menu
-    
     return prompt(_ACTION_MENU)['action']
