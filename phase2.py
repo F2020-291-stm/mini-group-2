@@ -3,10 +3,11 @@ from sys import argv
 from pymongo import MongoClient
 
 if __name__ == "__main__":
-    if (len(argv) < 2 or not argv[1].isdigit()):
-        print("No database port given, exiting...")
-        exit()
-    client = MongoClient('localhost', int(argv[1]))
+    #if (len(argv) < 2 or not argv[1].isdigit()):
+    #    print("No database port given, exiting...")
+    #    exit()
+    client = MongoClient('localhost', 27017#int(argv[1]))
+    )
     db = client['291db']
     database = mdatabase.Database(db)
 

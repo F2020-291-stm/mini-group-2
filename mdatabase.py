@@ -15,7 +15,7 @@ class Database:
         #done
         #post given has 5 attributes: uid, title, body, tags, and type
         dic_post = {}
-        dic_post["Id"] = self.pid_generator()
+        dic_post["Id"] = self.id_generator(self.posts)
         dic_post["PostTypeId"] = post["type"]
         if post["type"] == "2":
             dic_post["ParentId"] = post['qid']
@@ -34,13 +34,24 @@ class Database:
 
     def search(self, keywords_list):
         #TODO Retrieve all questions that match keywords in body, title, or tags
-        pass
+        questions = self.posts.find({'PostTypeId': '1'})
+        matching_questions = []
+        for question in questions:
+            for keyword in keywords_list:
+                cnd1 = keyword in question['Title']
+                cnd2 = keyword in question['Body']
+                cnd3 = keyword in question['Tags']
+                if cnd1 or cnd2 or cnd3:
+                    matching_questions.append(question)
+                    break
+
+        return matching_questions
 
     def find_answers(self, pid):
         #Retrieve all answers that answer pid
         #How?
         #Find all posts whose 'ParentId' is pid
-        return self.posts.find({'ParentId':pid})
+        return self.posts.find({'ParentId': pid})
 
     def get_post(self, pid):
         #Retrieve the post that has pid
@@ -59,8 +70,8 @@ class Database:
         for tag in tags:
             #check if the tag exists
             exists = False
-            tags = self.tags.find({'TagName': tag})
-            for tag in tags:
+            tag = self.tags.find_one({'TagName': tag})
+            if tag is not None:
                 exists = True
                 count = tag['Count']
 
@@ -69,19 +80,35 @@ class Database:
                 self.tags.update_one({'TagName': tag}, {'$set': {'Count':(count+1)}}) 
             else:
                 #insert new tag
-                Id = self.tid_generator()
+                Id = self.id_generator(self.tags)
                 dic_tag = {"Id":Id, "TagName":tag, "Count":0}
                 self.tags.insert_one(dic_tag)
 
     def up_vote(self, database, uid, pid):
+        votes = self.votes.find({'UserId': uid})
+        for vote in votes:
+            if vote['PostId'] == pid:
+                print("Already voted on this post!\n")
+                return 0
+
         post = self.get_post(pid)
+        score = post['Score']
+        self.posts.update_one({'Id': pid}, {'$set': {'Score': (score+1)}})
+
         dic_vote = {}
-        dic_vote['Id'] = self.vid_generator()
+        dic_vote['Id'] = self.id_generator(self.votes)
         dic_vote['PostId'] = pid
         dic_vote['VoteTypeId'] = "2"
         dic_vote['CreationDate'] = datetime.now()
+        if uid != "":
+            dic_vote["UserId"] = uid
 
         self.votes.insert_one(dic_vote)
+
+    def up_view(self, pid):
+        post = self.get_post(pid)
+        views = post['ViewCount']
+        self.posts.update_one({'Id': pid}, {'$set': {'ViewCount':(views+1)}})
 
     def get_user_received_votes(self, uid):
         #Find all posts made by uid, 
@@ -95,17 +122,20 @@ class Database:
 
         return count
 
-    def pid_generator(self):
-        obj = self.posts.find().sort('Id',-1).limit(1)
-        for post in obj:
-            return str(int(post['Id'])+1)
+    def id_generator(self, collection):
+        if collection is self.posts:
+            objs = self.posts.find({},{'Id':1})
+        elif collection is self.tags:
+            objs = self.tags.find({},{'Id':1})
+        elif collection is self.votes:
+            objs = self.votes.find({},{'Id':1})
 
-    def tid_generator(self):
-        obj = self.tags.find().sort('Id',-1).limit(1)
-        for tag in obj:
-            return str(int(tag['Id'])+1)
+        max_id = 0
+        for obj in objs:
+            Id = obj['Id']
+            if Id is not None:
+                Id = int(Id)
+                if Id > max_id:
+                    max_id = Id
 
-    def vid_generator(self):
-        obj = self.votes.find().sort('Id',-1).limit(1)
-        for vote in obj:
-            return str(int(vote['Id'])+1)
+        return str(max_id+1)

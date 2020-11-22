@@ -39,7 +39,7 @@ def user_report(database, uid):
 def write_post(database, uid, type_of_post, qid = None):
     #done
     print("\nEnter your " + type_of_post)
-    post = cli.write_post()
+    post = cli.write_post(type_of_post)
     print("")
 
     tags = [string.strip() for string in post["tags"].split(';')] #converts given string into a list of tags
@@ -49,7 +49,7 @@ def write_post(database, uid, type_of_post, qid = None):
     else:
         post["type"] = "2"
         post['qid'] = str(qid)
-    post["uid"] = str(uid)
+    post["uid"] = uid
 
     database.create_post(post)    
 
@@ -59,18 +59,12 @@ def search_and_act(database, uid):
     keywords_list  = [string.strip() for string in keywords]
 
     questions_found = database.search(keywords_list)
-    questions_found = ['remove this later']
 
     if questions_found is None:
-        print('No matches found')
+        print('No matches found\n')
     else:
-        q_found_list = []
-        for question in questions_found:
-            q_found_list.append(question)
-        q_found_list = [{"Id": "5", "Title": "question_title", "CreationDate": "now", "Score": 10, "AnswerCount": 5, "PostTypeId": "1"}] #remove this later
-
         while True:
-            qid = generate_search_list(q_found_list)
+            qid = generate_search_list(questions_found)
             if qid != '+':
                 break
 
@@ -78,6 +72,7 @@ def search_and_act(database, uid):
 
 def action_menu(database, uid, pid, is_question=True):
     #done
+    database.up_view(pid)
     display_post(database, pid)
 
     response = cli.action_menu_select(is_question)
@@ -85,33 +80,46 @@ def action_menu(database, uid, pid, is_question=True):
         write_post(database, uid, "answer", pid)
 
     elif response == 'List answers':
-        answers_found = database.find_answers(pid)
-
-        if answers_found is None:
-            print('This question has no answers')
-        else:
-            a_found_list = []
-            for answer in answers_found:
-                a_found_list.append(answer)
-
-            while True:
-                aid = generate_search_list(a_found_list)
-                if aid != '+':
-                    break
-
-            action_menu(database, uid, aid, False)
+        list_answers(database, uid, pid)
 
     elif response == 'Upvote':
         database.up_vote(database, uid, pid)
         print("You upvoted this post!\n")
 
+def list_answers(database, uid, pid):
+    #done
+    answers_found = database.find_answers(pid)
+
+    a_found_list = []
+    for answer in answers_found:
+        a_found_list.append(answer)
+
+    if a_found_list is None:
+        print('This question has no answers\n')
+    else:
+        #finds all answers and puts accepted answer at front of list
+        question = database.get_post(pid)
+        if 'AcceptedAnswerId' in question.keys():
+            accepted_answer = database.get_post(question['AcceptedAnswerId'])
+            a_found_list.remove(accepted_answer)
+            accepted_answer['is_acc_ans'] = True
+            a_found_list.insert(0, accepted_answer)
+
+        while True:
+            aid = generate_search_list(a_found_list)
+            if aid != '+':
+                break
+
+        action_menu(database, uid, aid, False)
+
 def display_post(database, pid):
     #done
     post = database.get_post(pid)
 
-    print("\nShowing Post:")
+    print("\nShowing Post " + post['Id'] + ":")
     for key in post:
-        print(key + ": " + str(post[key]))
+        if key != "_id" and key != 'Id':
+            print(key + ": " + str(post[key]))
 
     print('')
     

@@ -28,7 +28,7 @@ _MASTER_MENU =[
     }
 ]
 
-_POST_FORM = [
+_Q_POST_FORM = [
     {
         'type' : 'input',
         'name' : 'title',
@@ -44,6 +44,14 @@ _POST_FORM = [
         'name' : 'tags',
         'message' : 'Enter tags seperated by \';\'\n'
     }
+]
+
+_A_POST_FORM = [ 
+    {
+        'type' : 'input',
+        'name' : 'body',
+        'message' : 'body'
+    },
 ]
 
 _SEARCH_FORM = [
@@ -88,14 +96,18 @@ def master_menu_select():
     """    
     return prompt(_MASTER_MENU)['action']
 
-def write_post():
+def write_post(type_of_post):
     """User is prompted to submit a title, a text body, and tags for a post.
 
     Returns:
         Dictionary: Returns a dictionary containing three strings - title, body, and tags
     """    
-    #user submits a title and a text body
-    return prompt(_POST_FORM)
+    #user submits a title, text body, and tag for a question
+    #and just a text body for an answer
+    if type_of_post == 'question':
+        return prompt(_Q_POST_FORM)
+    else:
+        return prompt(_A_POST_FORM)
 
 def get_keyword():
     """Prompts user to submit as many key words as they like. User submits in a specified regular expression.
@@ -106,10 +118,15 @@ def get_keyword():
     return prompt(_SEARCH_FORM)['keywords'].split(';') #will require parsing when accessed
 
 def put_q_search_list(posts, more):
-    display = [Separator("{:<30}|{:<25}|{:<8}|{:<8}".format('Title', 'Date', 'Score', 'Answers'))]
+    display = [Separator("{:<80}|{:<30}|{:<8}|{:<8}".format('Title', 'Date', 'Score', 'Answers'))]
     for post in posts:
         item = {}
-        item['name'] = "{:<30}|{:<25}|{:<8}|{:<8}".format(post['Title'], post['CreationDate'], post['Score'], post['AnswerCount'])
+
+        title = post['Title']
+        if len(title) > 80:
+            title = title[:79]
+
+        item['name'] = "{:<80}|{:<30}|{:<8}|{:<8}".format(title, str(post['CreationDate']), post['Score'], post['AnswerCount'])
         item['value'] = post['Id']
         display.append(item)
     _SELECT_FORM[0]['choices'] = display
@@ -118,13 +135,20 @@ def put_q_search_list(posts, more):
     return prompt(_SELECT_FORM)['post']
 
 def put_a_search_list(posts, more):
-    display = [Separator("{:<25}|{:<8}|{:<80}".format('Date', 'Score', 'Body'))]
+    display = [Separator("{:<2}|{:<30}|{:<8}|{:<80}".format('  ', 'Date', 'Score', 'Body'))]
     for post in posts:
         item = {}
+
+        if 'is_acc_ans' in post.keys():
+            buffer = '* '
+        else:
+            buffer = '  '
+
         body = post['Body']
         if len(body) > 80:
             body = body[:79]
-        item['name'] = "{:<25}|{:<8}|{:<80}".format(post['CreationDate'], post['Score'], body)
+
+        item['name'] = "{:<2}|{:<30}|{:<8}|{:<80}".format(buffer, str(post['CreationDate']), post['Score'], body)
         item['value'] = post['Id']
         display.append(item)
     _SELECT_FORM[0]['choices'] = display
