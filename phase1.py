@@ -3,9 +3,10 @@ from pymongo import MongoClient, TEXT
 from sys import argv
 import re
 
-term_rule = re.compile(r"(?<!\w)\w{3,}(?=\W)")
+term_rule = re.compile(r"\w{3,}|\w{2,}'\w+")
+html_tag_rule = re.compile(r"<.*?>")
 
-# Old split regex: [^\w<]*(?:<[^>]*>|(?<!\w)\w{,2}[^\w .,;:\"<]+\w*)|\W+
+# Old split regex: \\n|[^\w<]*(?:<[^>]*>|(?<![\w'])\w{1,2}(?:[^\w\s.,;:'\"<]+\w*)*[\s.,;:\"<])|\W+
 
 def build_collection(db, cname, extract_keys = None):
     """Builds a database collection based on a json file in the directory
@@ -25,9 +26,9 @@ def build_collection(db, cname, extract_keys = None):
     
     # Extract terms from any provided keys and create an index
     if extract_keys is not None and len(extract_keys) > 0:
-        db[cname].create_index([('terms', TEXT)])
+        db[cname].create_index([('Terms', TEXT)])
         for document in documents:
-            document['terms'] = extract_terms(document, extract_keys)
+            document['Terms'] = extract_terms(document, extract_keys)
 
     # Insert the documents
     db[cname].insert_many(documents)
@@ -60,16 +61,12 @@ def extract_3plus_letter_words(text):
         set(str): words extracted (lowercase)
     """
     words = set()
-    for item in term_rule.finditer(text):
+    clean_text = html_tag_rule.sub(' ', text)
+    for item in term_rule.finditer(clean_text):
         words.add(item[0].lower())
     return words
 
-if __name__ == "__main__":
-    # Get port number
-    if (len(argv) < 2 or not argv[1].isdigit()):
-        print("No valid database port given, exiting...")
-        exit()
-
+def build_database(port):
     # Connect to database
     client = MongoClient('localhost', int(argv[1]))
     db = client['291db']
@@ -78,6 +75,13 @@ if __name__ == "__main__":
     build_collection(db, 'Posts', ['Title', 'Body'])
     build_collection(db, 'Tags')
     build_collection(db, 'Votes')
+
+if __name__ == "__main__":
+    if len(argv) < 2 or not argv[1].isdigit():
+        print("No valid database port given, exiting...")
+        exit()
+
+    build_database(int(argv[1]))
 
 
     
