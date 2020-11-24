@@ -6,8 +6,8 @@ if __name__ == "__main__":
     #if (len(argv) < 2 or not argv[1].isdigit()):
     #    print("No database port given, exiting...")
     #    exit()
-    client = MongoClient('localhost', 27017#int(argv[1]))
-    )
+    client = MongoClient('localhost', 27017)            
+    #int(argv[1]))
     db = client['291db']
     database = mdatabase.Database(db)
 
@@ -17,7 +17,6 @@ if __name__ == "__main__":
     
     while True: #until the user quits the system
         choice = cli.master_menu_select()
-
         if choice == 'Post a question': #can either post a new question
             menus.write_post(database, uid, "question")
         elif choice == 'Search for questions': #or search for posts. More can be done from there

@@ -74,7 +74,6 @@ def extract_terms(document, keys):
     for key in keys:
         if key in document.keys():
             terms.update(extract_3plus_letter_words(document[key]))
-
     return list(terms)
 
 def extract_3plus_letter_words(text):
