@@ -135,7 +135,6 @@ def generate_search_list(posts):
         empty = True
     if not posts:
         empty = True
-
     if items[0]['PostTypeId'] == '1':
         return cli.put_q_search_list(items, not empty)
     else:

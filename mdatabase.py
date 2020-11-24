@@ -1,5 +1,7 @@
 from pymongo import MongoClient
 from datetime import datetime
+import time
+import re
 
 client = MongoClient()
 db = client['291db']
@@ -34,18 +36,26 @@ class Database:
 
     def search(self, keywords_list):
         #TODO Retrieve all questions that match keywords in body, title, or tags
-        questions = self.posts.find({'PostTypeId': '1'})
         matching_questions = []
-        for question in questions:
-            for keyword in keywords_list:
-                cnd1 = keyword in question['Title']
-                cnd2 = keyword in question['Body']
-                cnd3 = keyword in question['Tags']
-                if cnd1 or cnd2 or cnd3:
-                    matching_questions.append(question)
-                    break
-
-        return matching_questions
+        for keyword in keywords_list:
+            if len(keyword) >= 3:
+                questions = self.posts.find({'$text': {'$search': keyword}, 'PostTypeId': '1'})
+            else:
+                regular_exp = re.compile('\\b' + keyword + '\\b', re.IGNORECASE)
+                questions = self.posts.find({
+                    '$or': [
+                        {'Title' : regular_exp},
+                        {'Body' : regular_exp},
+                        {'Tags' : regular_exp}
+                    ],
+                    'PostTypeId': '1'
+                })
+            for question in questions:
+                matching_questions.append(question)
+        print(len(matching_questions))
+        res = []
+        [res.append(x) for x in matching_questions if x not in res]
+        return res
 
     def find_answers(self, pid):
         #Retrieve all answers that answer pid

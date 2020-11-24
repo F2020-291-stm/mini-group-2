@@ -28,7 +28,6 @@ def build_collection(db, cname, extract_keys = None):
         db[cname].create_index([('terms', TEXT)])
         for document in documents:
             document['terms'] = extract_terms(document, extract_keys)
-
     # Insert the documents
     db[cname].insert_many(documents)
     print("Inserted {} documents into {}\n".format(db[cname].count_documents({}), cname))
@@ -47,7 +46,6 @@ def extract_terms(document, keys):
     for key in keys:
         if key in document.keys():
             terms.update(extract_3plus_letter_words(document[key]))
-
     return list(terms)
 
 def extract_3plus_letter_words(text):
