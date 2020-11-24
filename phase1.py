@@ -1,6 +1,7 @@
-from simplejson import load as j_load
+from json import load as j_load
 from pymongo import MongoClient, TEXT
 from sys import argv
+from multiprocessing import Process
 import re
 
 term_rule = re.compile(r"\w{3,}|\w{2,}'\w+")
@@ -8,7 +9,7 @@ html_tag_rule = re.compile(r"<.*?>")
 
 # Old split regex: \\n|[^\w<]*(?:<[^>]*>|(?<![\w'])\w{1,2}(?:[^\w\s.,;:'\"<]+\w*)*[\s.,;:\"<])|\W+
 
-def build_collection(db, cname, extract_keys = None):
+def build_collection(port, cname, extract_keys = None):
     """Builds a database collection based on a json file in the directory
 
     Args:
@@ -17,6 +18,7 @@ def build_collection(db, cname, extract_keys = None):
         extract_terms (list(str), optional): Keys to extract terms from. Defaults to None.
     """
     print("Building collection: {}".format(cname))
+    db = MongoClient('localhost', port)['291db']
     # Drop any existing collection by the same name
     db.drop_collection(cname)
 
@@ -27,12 +29,36 @@ def build_collection(db, cname, extract_keys = None):
     # Extract terms from any provided keys and create an index
     if extract_keys is not None and len(extract_keys) > 0:
         db[cname].create_index([('Terms', TEXT)])
-        for document in documents:
-            document['Terms'] = extract_terms(document, extract_keys)
 
-    # Insert the documents
+        SIZE_FACTOR = 100000
+        i = 1
+        processes = []
+
+        # Divide and conquer
+        while i*SIZE_FACTOR < len(documents):
+            processes.append(Process(target=extract_terms_batch,
+                args=(documents, extract_keys, (i-1)*SIZE_FACTOR, i*SIZE_FACTOR)))
+            processes[-1].start()
+            i = i + 1
+
+        processes.append(Process(target=extract_terms_batch,
+            args=(documents, extract_keys, (i-1)*SIZE_FACTOR)))
+        processes[-1].start()
+        
+        for p in processes:
+            p.join()
+
+    # Insert the documents normally
     db[cname].insert_many(documents)
     print("Inserted {} documents into {}\n".format(db[cname].count_documents({}), cname))
+
+def extract_terms_batch(documents, keys, start=0, finish=-1):
+    if (finish > -1):
+        for document in documents[start:finish]:
+            document['Terms'] = extract_terms(document, keys)
+    else: 
+        for document in documents[start:]:
+            document['Terms'] = extract_terms(document, keys)
 
 def extract_terms(document, keys):
     """Extracts terms from a document using given keys
@@ -61,20 +87,27 @@ def extract_3plus_letter_words(text):
         set(str): words extracted (lowercase)
     """
     words = set()
-    clean_text = html_tag_rule.sub(' ', text)
-    for item in term_rule.finditer(clean_text):
+    for item in term_rule.finditer(text):
         words.add(item[0].lower())
     return words
 
 def build_database(port):
     # Connect to database
-    client = MongoClient('localhost', int(argv[1]))
-    db = client['291db']
     
-    # Build all collections
-    build_collection(db, 'Posts', ['Title', 'Body'])
-    build_collection(db, 'Tags')
-    build_collection(db, 'Votes')
+    # Build all collections using threads to reduce time
+    processes = []
+    processes.append(Process(target=build_collection, args=(int(argv[1]), 'Posts', ['Title', 'Body'])))
+    processes.append(Process(target=build_collection, args=(int(argv[1]), 'Tags')))
+    processes.append(Process(target=build_collection, args=(int(argv[1]), 'Votes')))
+
+    # Run all threads then wait for them to complete
+    for process in processes:
+        process.start()
+
+    for process in processes:
+        process.join()
+    
+    print("Database is built")
 
 if __name__ == "__main__":
     if len(argv) < 2 or not argv[1].isdigit():
