@@ -87,7 +87,7 @@ def extract_3plus_letter_words(text):
     """
     words = set()
     for item in term_rule.finditer(text):
-        words.add(item[0].lower())
+        words.add(item.group(0).lower())
     return words
 
 def build_database(port):
