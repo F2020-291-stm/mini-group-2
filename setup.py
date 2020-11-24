@@ -6,7 +6,6 @@ def install(package):
 
 if __name__ == "__main__":
     install("PyInquirer")
-    install("simplejson")
     install("pymongo")
 
     # Handle execution of phase1

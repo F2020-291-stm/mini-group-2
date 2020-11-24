@@ -7,15 +7,35 @@ client = MongoClient()
 db = client['291db']
 
 class Database:
-    """
-    represents a database and related functionality 
-    """
-    def __init__(self, db):
-        self.db = db
+
+    def __init__(self, port):
+        """
+        represents a database and related functionality 
+        """
+        self.db = MongoClient('localhost', port)['291db']
         self.posts = db["Posts"]
         self.votes = db["Votes"]
         self.tags = db["Tags"]
 
+    def use_uid(self, uid):
+        self.uid = uid
+
+    def build_post(self, post):
+        dic_post = {}
+        dic_post["Id"] = self.id_generator(self.posts)
+        dic_post["CreationDate"] = datetime.now()
+        dic_post["ContentLicense"] = "CC BY-SA 2.5"
+        if self.uid is not None:
+            dic_post["OwnerUserId"] = uid
+
+        dic_post["Body"] = "<p>" + post["body"] + "</p>\n"
+        dic_post["Title"] = post["title"]
+        if len(post['tags']) > 0:
+            dic_post["Tags"] = "<" + "><".join(post["tags"]) + ">"
+        
+        return dic_post
+
+    # Depricated (pls remove)
     def create_post(self, post):
         """creates a post and inserts into the given dictionary
 
@@ -28,17 +48,25 @@ class Database:
         if post["type"] == "2":
             dic_post["ParentId"] = post['qid']
         dic_post["CreationDate"] = datetime.now()
-        for attribute in ["Score", "ViewCount", "AnswerCount", "CommentCount", "FavoriteCount"]:
-            dic_post[attribute] = 0
         dic_post["ContentLicense"] = "CC BY-SA 2.5"
-        if post["uid"] != "":
-            dic_post["OwnerUserId"] = post["uid"]
+        if self.uid is not None:
+            dic_post["OwnerUserId"] = uid
 
         dic_post["Body"] = "<p>" + post["body"] + "</p>\n"
         dic_post["Title"] = post["title"]
-        dic_post["Tags"] = "<" + "><".join(post["tags"]) + ">"
+        if len(post['tags']) > 0:
+            dic_post["Tags"] = "<" + "><".join(post["tags"]) + ">"
 
         self.posts.insert_one(dic_post)
+    
+    def post_question(self, post):
+        # TODO
+        dic_post["PostTypeId"] = '2'
+
+    def post_answer(self, post):
+        # TODO
+        dic_post["PostTypeId"] = '1'
+
 
     def search(self, keywords_list):
         """searches the collection using given keywords
@@ -191,17 +219,17 @@ class Database:
         Returns:
             str: contains the generated id
         """
-        if collection is self.posts:
-            objs = self.posts.find({},{'Id':1})
-        elif collection is self.tags:
-            objs = self.tags.find({},{'Id':1})
-        elif collection is self.votes:
-            objs = self.votes.find({},{'Id':1})
-        max_id = 0
-        for obj in objs:
-            Id = obj['Id']
-            if Id is not None:
-                Id = int(Id)
-                if Id > max_id:
-                    max_id = Id
-        return str(max_id+1)
+        max_id = collection.aggregate(
+            [
+                {
+                    '$group':
+                        {
+                            "max_id": {
+                                '$max': '$Id'
+                            }
+                        }
+                }
+            ]
+        )['max_id']
+
+        return str(int(max_id)+1)

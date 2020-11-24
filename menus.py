@@ -1,5 +1,11 @@
 import cli
 
+def user_login(database):
+    uid = cli.login()
+    if uid != '':
+        database.use_uid(uid)
+        user_report(database)
+
 def user_report(database, uid):
     #done
     print("\nUser Report")
@@ -137,4 +143,14 @@ def generate_search_list(posts):
         return cli.put_q_search_list(items, not empty)
     else:
         return cli.put_a_search_list(items, not empty)
+
+def master_menu(database):
+    while True: #until the user quits the system
+        choice = cli.master_menu_select()
+        if choice == 'Post a question': #can either post a new question
+            write_post(database, "question")
+        elif choice == 'Search for questions': #or search for posts. More can be done from there
+            search_and_act(database)
+        else:
+            break
 
