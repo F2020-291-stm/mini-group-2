@@ -57,7 +57,6 @@ def search_and_act(database, uid):
     #done
     keywords = cli.get_keyword() #asks for keywords to base search off of
     keywords_list  = [string.strip() for string in keywords]
-
     questions_found = database.search(keywords_list)
 
     if questions_found is None:
@@ -67,7 +66,6 @@ def search_and_act(database, uid):
             qid = generate_search_list(questions_found)
             if qid != '+':
                 break
-
         action_menu(database, uid, qid) 
 
 def action_menu(database, uid, pid, is_question=True):
