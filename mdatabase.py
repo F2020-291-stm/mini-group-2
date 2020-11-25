@@ -59,18 +59,18 @@ class Database:
         """
         matching_questions = []
         for keyword in keywords_list:
-            """if len(keyword) >= 3:
-                questions = self.posts.find({'$text': {'$search': keyword}, 'PostTypeId': '1'})
-            else:"""
-            regular_exp = re.compile('\\b' + keyword + '\\b', re.IGNORECASE)
-            questions = self.posts.find({
-            '$or': [
-                {'Title' : regular_exp},
-                {'Body' : regular_exp},
-                {'Tags' : regular_exp}
-                ],
-            'PostTypeId': '1'
-            })
+            if len(keyword) >= 3:
+                questions = self.posts.find({'Terms': keyword, 'PostTypeId': '1'})
+            else:
+                regular_exp = re.compile('\\b' + keyword + '\\b', re.IGNORECASE)
+                questions = self.posts.find({
+                '$or': [
+                    {'Title' : regular_exp},
+                    {'Body' : regular_exp},
+                    {'Tags' : regular_exp}
+                    ],
+                'PostTypeId': '1'
+                })
         for question in questions:
             matching_questions.append(question)
         print(len(matching_questions))
