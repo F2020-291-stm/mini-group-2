@@ -58,7 +58,7 @@ def write_post(database, uid, type_of_post, qid = None):
     post["uid"] = uid
 
     database.create_post(post)    
-
+    
 def search_and_act(database, uid):
     #done
     keywords = cli.get_keyword() #asks for keywords to base search off of
@@ -87,7 +87,7 @@ def action_menu(database, uid, pid, is_question=True):
         list_answers(database, uid, pid)
 
     elif response == 'Upvote':
-        database.up_vote(database, uid, pid)
+        database.up_vote(uid, pid)
         print("You upvoted this post!\n")
 
 def list_answers(database, uid, pid):

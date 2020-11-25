@@ -27,18 +27,16 @@ class Database:
         dic_post["ContentLicense"] = "CC BY-SA 2.5"
         if self.uid is not None:
             dic_post["OwnerUserId"] = uid
-
         dic_post["Body"] = "<p>" + post["body"] + "</p>\n"
         dic_post["Title"] = post["title"]
         if len(post['tags']) > 0:
             dic_post["Tags"] = "<" + "><".join(post["tags"]) + ">"
-        
         return dic_post
 
     # Depricated (pls remove)
     def create_post(self, post):
-        """creates a post and inserts into the given dictionary
-
+        """
+        creates a post and inserts into the given dictionary
         Args:
             post (post): A dictionary containing all the posts
         """
@@ -51,7 +49,6 @@ class Database:
         dic_post["ContentLicense"] = "CC BY-SA 2.5"
         if self.uid is not None:
             dic_post["OwnerUserId"] = uid
-
         dic_post["Body"] = "<p>" + post["body"] + "</p>\n"
         dic_post["Title"] = post["title"]
         if len(post['tags']) > 0:
@@ -153,22 +150,30 @@ class Database:
                 dic_tag = {"Id":Id, "TagName":tag, "Count":0}
                 self.tags.insert_one(dic_tag)
 
-    def up_vote(self, database, uid, pid):
+    def up_vote(self, uid, pid):
         """
         upvotes a post given uid and pid
         Args:
-            database ([type]): [description]
             uid (str): holds the user id
             pid (str): holds the post id
 
         Returns:
             [int]: return 0 to flag if already voted
         """
+        vid = self.id_generator(self.votes)
+        vote = {'$setOnInsert': [{'Id' : vid}, {'PostId': pid}, {'VoteTypeId': "2"}, {'CreationDate': datetime.now()}]}
+        if uid != '':
+            vote['$setOnInsert'].append({'UserId':uid})
+        result = self.votes.update_one({'$and':[{'UserId': uid}, {'PostId' : pid}]}, vote, upsert=True)
+        if result.matched_count:
+            print("Already voted on this post!\n")
+            return 0
+        self.posts.find_one_and_update({'PostId': pid}, {'$inc':{'Score': 1}})
+        '''
         votes = self.votes.find({'UserId': uid})
         for vote in votes:
             if vote['PostId'] == pid:
-                print("Already voted on this post!\n")
-                return 0
+                
 
         post = self.get_post(pid)
         score = post['Score']
@@ -181,7 +186,7 @@ class Database:
         if uid != "":
             dic_vote["UserId"] = uid
         self.votes.insert_one(dic_vote)
-
+        '''
     def up_view(self, pid):
         """increases the viewcount
 
