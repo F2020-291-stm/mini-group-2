@@ -80,7 +80,7 @@ class Database:
         res = []
         [res.append(x) for x in matching_questions if x not in res]
         return res
-"""
+    """
     def find_questions2(self, keywords_list):
         questions = self.posts.find({'PostTypeId': '1'})
 
@@ -96,7 +96,7 @@ class Database:
                 break
         
         return matching_questions
-"""
+    """
 
     def find_answers(self, pid):
         return self.posts.find({'ParentId': pid})
@@ -252,12 +252,11 @@ class Database:
     '''
 
     def up_vote(self, uid, pid):
-        exists = self.votes.find({'UserId': uid, 'PostId': pid})
-        if exists is None:
+        vote = self.votes.find({'UserId': uid, 'PostId': pid})
+        if not vote.retrieved:
             post = self.get_post(pid)
             score = post['Score']
             self.posts.update_one({'Id': pid}, {'$set': {'Score': (score+1)}})
-
             dic_vote = {}
             dic_vote['Id'] = self.id_generator(self.votes)
             dic_vote['PostId'] = pid
@@ -265,6 +264,7 @@ class Database:
             dic_vote['CreationDate'] = datetime.now()
             if uid != "":
                 dic_vote["UserId"] = uid
+            print(dic_vote)
             self.votes.insert_one(dic_vote)
 
 
