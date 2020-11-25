@@ -5,6 +5,7 @@ from multiprocessing import Process
 import re
 
 term_rule = re.compile(r"(?<!\w)\w{3,20}(?!\w)")
+tag_rule = re.compile(r"(?<=<)\w+(?=>)")
 
 def build_collection(cname, port):
     """Builds a database collection based on a json file in the directory
@@ -70,7 +71,15 @@ def extract_terms(document):
         terms.update(extract_3plus_letter_words(document['Title']))
     if 'Body' in document.keys():
         terms.update(extract_3plus_letter_words(document['Body']))
+    if 'Tags' in document.keys():
+        terms.update(extract_tags(document['Tags']))
     document['Terms'] = list(terms)
+
+def extract_tags(text):
+    words = set()
+    for item in term_rule.finditer(text):
+        words.add(item.group(0).lower())
+    return words
 
 def extract_3plus_letter_words(text):
     """Extracts all alphanumberic strings of 3 characters or more
