@@ -1,6 +1,5 @@
 from json import load as j_load
 from pymongo import MongoClient, TEXT
-from sys import argv
 from multiprocessing import Process
 import re
 import time
@@ -102,12 +101,3 @@ def build_database(port):
         process.join()
     
     print("Database is built")
-
-if __name__ == "__main__":
-    
-    if len(argv) < 2 or not argv[1].isdigit():
-        print("No valid database port given, exiting...")
-        exit()
-    starttime = time.time()
-    build_database(int(argv[1]))
-    print("------time elapsed = ", (time.time() - starttime)/60 , "--------")
