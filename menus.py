@@ -33,7 +33,6 @@ def find_questions(database):
     if len(questions) == 0:
         print("No questions found matching given keywords")
         return
-
     qid = choose_post(questions, True)
     action_menu(database, qid) 
 
@@ -48,7 +47,7 @@ def action_menu(database, pid, is_question=True):
         list_answers(database, pid)
 
     elif response == 'Upvote':
-        # database.up_vote(database, pid)
+        database.up_vote(database, pid)
         print("You upvoted this post!\n")
 
 def list_answers(database, pid):

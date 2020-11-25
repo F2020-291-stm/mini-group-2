@@ -163,22 +163,30 @@ class Database:
                 Id = self.id_generator(self.tags)
                 self.tags.insert_one({"Id":Id, "TagName":tag, "Count":0})
 
-    def up_vote(self, database, uid, pid):
+    def up_vote(self, uid, pid):
         """
         upvotes a post given uid and pid
         Args:
-            database ([type]): [description]
             uid (str): holds the user id
             pid (str): holds the post id
 
         Returns:
             [int]: return 0 to flag if already voted
         """
+        vid = self.id_generator(self.votes)
+        vote = {'$setOnInsert': [{'Id' : vid}, {'PostId': pid}, {'VoteTypeId': "2"}, {'CreationDate': datetime.now()}]}
+        if uid != '':
+            vote['$setOnInsert'].append({'UserId':uid})
+        result = self.votes.update_one({'$and':[{'UserId': uid}, {'PostId' : pid}]}, vote, upsert=True)
+        if result.matched_count:
+            print("Already voted on this post!\n")
+            return 0
+        self.posts.find_one_and_update({'PostId': pid}, {'$inc':{'Score': 1}})
+        '''
         votes = self.votes.find({'UserId': uid})
         for vote in votes:
             if vote['PostId'] == pid:
-                print("Already voted on this post!\n")
-                return 0
+                
 
         post = self.get_post(pid)
         score = post['Score']
@@ -191,7 +199,7 @@ class Database:
         if uid != "":
             dic_vote["UserId"] = uid
         self.votes.insert_one(dic_vote)
-
+    '''
     def get_user_received_votes(self, uid):
         """
         Find all posts made by uid, 
