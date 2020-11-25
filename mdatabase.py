@@ -39,6 +39,9 @@ class Database:
         if len(data['tags']) > 0:
             post["Tags"] = "<" + "><".join(data["tags"]) + ">"
         post["PostTypeId"] = '1'
+        post["AnswerCount"] = 0
+        post["CommentCount"] = 0
+        post["ViewCount"] = 0
         self.posts.insert_one(post)
 
     def post_answer(self, data):
@@ -47,7 +50,7 @@ class Database:
         post["ParentId"] = data['qid']
         self.posts.insert_one(post)
 
-    def find_questions(self, keywords_list):
+    def find_questions2(self, keywords_list):
         """searches the collection using given keywords
 
         Args:
@@ -74,6 +77,23 @@ class Database:
             'PostTypeId': '1'
         })
         return list(questions)
+
+    def find_questions(self, keywords_list):
+        questions = self.posts.find({'PostTypeId': '1'})
+
+        matching_questions = []
+        for question in questions:
+            for keyword in keywords_list:
+                cnd1 = keyword in question['Title']
+                cnd2 = keyword in question['Body']
+                cnd3 = keyword in question['Tags']
+
+                if cnd1 or cnd2 or cnd3:
+                    matching_questions.append(question)
+                break
+        
+        return matching_questions
+
 
     def find_answers(self, pid):
         return self.posts.find({'ParentId': pid})
@@ -190,7 +210,7 @@ class Database:
                 Id = self.id_generator(self.tags)
                 self.tags.insert_one({"Id":Id, "TagName":tag, "Count":0})
 
-    def up_vote(self, uid, pid):
+    def up_vote2(self, uid, pid):
         """
         upvotes a post given uid and pid
         Args:
@@ -227,6 +247,23 @@ class Database:
             dic_vote["UserId"] = uid
         self.votes.insert_one(dic_vote)
     '''
+
+    def up_vote(self, uid, pid):
+        exists = self.votes.find({'UserId': uid, 'PostId': pid})
+        if exists is None:
+            post = self.get_post(pid)
+            score = post['Score']
+            self.posts.update_one({'Id': pid}, {'$set': {'Score': (score+1)}})
+
+            dic_vote = {}
+            dic_vote['Id'] = self.id_generator(self.votes)
+            dic_vote['PostId'] = pid
+            dic_vote['VoteTypeId'] = "2"
+            dic_vote['CreationDate'] = datetime.now()
+            if uid != "":
+                dic_vote["UserId"] = uid
+            self.votes.insert_one(dic_vote)
+
 
     def id_generator2(self, collection):
         """generates an unique id for each collection
