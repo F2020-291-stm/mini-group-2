@@ -143,6 +143,34 @@ class Database:
 
         return report
 
+    def get_user_report2(self, uid):
+        report = {'qcount': 0, 'qavg': 0, 'acount': 0, 'aavg': 0, 'vcount': 0}
+        qcount, qavg, acount, aavg, vcount = 0, 0, 0, 0, 0
+
+        posts = self.posts.find({'OwnerUserId': uid})
+        for post in posts:
+            if post['PostTypeId'] == 1: #is a question
+                qcount += 1
+                qavg += post['Score']
+            else:
+                acount += 1
+                aavg += post['Score']
+        
+        if qcount > 0:
+            report['qavg'] = qavg/qcount
+        if acount > 0:
+            report['aavg'] = aavg/acount
+        report['qcount'] = qcount
+        report['acount'] = acount
+
+        votes = self.votes.find({'UserId':uid})
+        for vote in votes:
+            vcount += 1
+        report['vcount'] = vcount
+
+        return report
+
+
     def tag_updater(self, tags):
         """given a list of tags, check if that tag is in the database 
         if it is, then increase the count by 1,  
@@ -200,25 +228,8 @@ class Database:
             dic_vote["UserId"] = uid
         self.votes.insert_one(dic_vote)
     '''
-    def get_user_received_votes(self, uid):
-        """
-        Find all posts made by uid, 
-        Find all votes made on each of those posts
-        Count all those votes
 
-        Args:
-            uid (str): contains the user id to check
-
-        Returns:
-            int: contains the number of votes received
-        """
-        count = 0
-        posts = self.get_user_posts(uid)
-        for post in posts:
-            count += self.votes.find({'PostId':post['Id']}).count()
-        return count
-
-    def id_generator(self, collection):
+    def id_generator2(self, collection):
         """generates an unique id for each collection
 
         Args:
@@ -241,3 +252,13 @@ class Database:
 
         for id in max_id:
             return str(max_id+1)
+
+    def id_generator(self, collection):
+        the_max = 0
+        objs = collection.find({}, {'Id': 1})
+        for obj in objs:
+            obj_id = int(obj['Id'])
+            if the_max < obj_id:
+                the_max = obj_id
+
+        return str(the_max+1)
