@@ -3,94 +3,54 @@ import cli
 def user_login(database):
     uid = cli.login()
     if uid != '':
+        user_report(database, uid)
         database.use_uid(uid)
-        user_report(database)
 
 def user_report(database, uid):
     #done
     print("\nUser Report")
     print("User: " + str(uid))
-    posts = database.get_user_posts(uid) #fetches the posts posted by this user
-    num_votes = 0
-    num_questions = 0
-    num_answers = 0
-    q_avg_score = 0
-    a_avg_score = 0
+    report = database.get_user_report(uid) #fetches the posts posted by this user
 
-    #calculates above four values by going through each user's posts and counting
-    for post in posts:
-        if post['PostTypeId'] == "1": #is a question
-            num_questions += 1
-            q_avg_score += post['Score']
-        else:
-            num_answers += 1
-            a_avg_score += post['Score']
+    print("Questions Posted: {}".format(report['qcount']))
+    print("Question Average Score: {}".format(report['qavg']))
+    print("Answers Posted: {}".format(report['acount']))
+    print("Answer Average Score: {}".format(report['aavg']))
+    print("Votes Registered: {}{}".format(report['vcount'], '\n'))
 
-    #in case of division by 0
-    if num_questions > 0:
-        q_avg_score = q_avg_score/num_questions
-    else:
-        q_avg_score = 0
-    if num_answers > 0:
-        a_avg_score = a_avg_score/num_answers
-    else:
-        a_avg_score = 0
+def write_question(database):
+    database.post_question(cli.write_question())
 
-    print("Questions Posted: " + str(num_questions))
-    print("Question Average Score: " + str(q_avg_score))
-    print("Answers Posted: " + str(num_answers))
-    print("Answer Average Score: " + str(a_avg_score))
-    print("Votes Received: " + str(num_votes) + "\n")    
+def write_answer(database, qid):
+    post = cli.write_answer()
+    post['qid'] = str(qid)
+    database.post_answer(post) 
 
-def write_post(database, uid, type_of_post, qid = None):
+def find_questions(database):
     #done
-    print("\nEnter your " + type_of_post)
-    post = cli.write_post(type_of_post)
-    print("")
+    keywords = cli.get_keywords() #asks for keywords to base search off of
+    questions = database.find_questions(keywords)
+    if len(questions) == 0:
+        print("No questions found matching given keywords")
+        return
+    qid = choose_post(questions, True)
+    action_menu(database, qid) 
 
-    tags = [string.strip() for string in post["tags"].split(';')] #converts given string into a list of tags
-    post["tags"] = tags
-    if type_of_post == "question":
-        post["type"] = "1"
-    else:
-        post["type"] = "2"
-        post['qid'] = str(qid)
-    post["uid"] = uid
-
-    database.create_post(post)    
-    
-def search_and_act(database, uid):
-    #done
-    keywords = cli.get_keyword() #asks for keywords to base search off of
-    keywords_list  = [string.strip() for string in keywords]
-    questions_found = database.search(keywords_list)
-
-    if questions_found is None:
-        print('No matches found\n')
-    else:
-        while True:
-            qid = generate_search_list(questions_found)
-            if qid != '+':
-                break
-        action_menu(database, uid, qid) 
-
-def action_menu(database, uid, pid, is_question=True):
-    #done
-    database.up_view(pid)
+def action_menu(database, pid, is_question=True):
     display_post(database, pid)
 
     response = cli.action_menu_select(is_question)
     if response == 'Answer question':
-        write_post(database, uid, "answer", pid)
+        write_answer(database, pid)
 
     elif response == 'List answers':
-        list_answers(database, uid, pid)
+        list_answers(database, pid)
 
     elif response == 'Upvote':
-        database.up_vote(uid, pid)
+        database.up_vote(database, pid)
         print("You upvoted this post!\n")
 
-def list_answers(database, uid, pid):
+def list_answers(database, pid):
     #done
     answers_found = database.find_answers(pid)
 
@@ -108,16 +68,12 @@ def list_answers(database, uid, pid):
             a_found_list.remove(accepted_answer)
             accepted_answer['is_acc_ans'] = True
             a_found_list.insert(0, accepted_answer)
+        
+        aid = choose_post(a_found_list, False)
 
-        while True:
-            aid = generate_search_list(a_found_list)
-            if aid != '+':
-                break
-
-        action_menu(database, uid, aid, False)
+        action_menu(database, aid, False)
 
 def display_post(database, pid):
-    #done
     post = database.get_post(pid)
 
     print("\nShowing Post " + post['Id'] + ":")
@@ -127,30 +83,34 @@ def display_post(database, pid):
 
     print('')
     
-def generate_search_list(posts):
-    #done
-    page_size = 10 
-    empty = False
-    try:
-        items = []
-        for _ in range(page_size):
-            items.append(posts.pop(0))
-    except IndexError:
-        empty = True
-    if not posts:
-        empty = True
-    if items[0]['PostTypeId'] == '1':
-        return cli.put_q_search_list(items, not empty)
-    else:
-        return cli.put_a_search_list(items, not empty)
+def choose_post(posts, is_question):
+    PAGE_SIZE = 10
+    page_index = 0
+    response = '+'
+    while response != '+' or response != '-':
+        show_next = (page_index + 1)*PAGE_SIZE <= len(posts)
+        show_prev = page_index > 0
+
+        if is_question:
+            response = cli.choose_question(posts[page_index*PAGE_SIZE:(page_index + 1)*PAGE_SIZE], show_next, show_prev)
+        else:
+            response = cli.choose_answer(posts[page_index*PAGE_SIZE:(page_index + 1)*PAGE_SIZE], show_next, show_prev)
+
+        if response == '+':
+            page_index = page_index + 1
+        elif response == '-':
+            page_index = page_index - 1
+        else:
+            return response
 
 def master_menu(database):
+    user_login(database)
     while True: #until the user quits the system
         choice = cli.master_menu_select()
         if choice == 'Post a question': #can either post a new question
-            write_post(database, "question")
+            write_question(database)
         elif choice == 'Search for questions': #or search for posts. More can be done from there
-            search_and_act(database)
+            find_questions(database)
         else:
             break
 
