@@ -51,7 +51,7 @@ class Database:
         post["ParentId"] = data['qid']
         self.posts.insert_one(post)
 
-    def find_questions2(self, keywords_list):
+    def find_questions(self, keywords_list):
         """searches the collection using given keywords
 
         Args:
@@ -62,7 +62,7 @@ class Database:
         """
         matching_questions = []
         for keyword in keywords_list:
-            if len(keyword) >= 3:
+            if len(keyword) >= 100000:
                 questions = self.posts.find({'Terms': keyword, 'PostTypeId': '1'})
             else:
                 regular_exp = re.compile('\\b' + keyword + '\\b', re.IGNORECASE)
@@ -81,7 +81,7 @@ class Database:
         [res.append(x) for x in matching_questions if x not in res]
         return res
 
-    def find_questions(self, keywords_list):
+    def find_questions2(self, keywords_list):
         questions = self.posts.find({'PostTypeId': '1'})
 
         matching_questions = []
@@ -252,8 +252,13 @@ class Database:
     '''
 
     def up_vote(self, uid, pid):
-        exists = self.votes.find({'UserId': uid, 'PostId': pid})
-        if exists is None:
+        #vote = self.votes.find({'UserId': uid, 'PostId': pid})
+        #count = 0 
+        #for obj in vote:
+        #    count += 1
+        count = self.votes.count_documents({'UserId': uid, 'PostId': pid})
+
+        if not count:
             post = self.get_post(pid)
             score = post['Score']
             self.posts.update_one({'Id': pid}, {'$set': {'Score': (score+1)}})
@@ -266,6 +271,10 @@ class Database:
             if uid != "":
                 dic_vote["UserId"] = uid
             self.votes.insert_one(dic_vote)
+
+        return (not count)
+
+        
 
 
     def id_generator2(self, collection):
