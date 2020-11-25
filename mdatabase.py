@@ -1,6 +1,7 @@
 from pymongo import MongoClient
 from datetime import datetime
 import time
+import re
 
 client = MongoClient()
 db = client['291db']
@@ -56,24 +57,26 @@ class Database:
         Returns:
             list: list of cursors containing the results of the search
         """
-        criteria = []
+        matching_questions = []
         for keyword in keywords_list:
-            if (len(keyword) > 2):
-                criteria.append({'Terms': keyword.lower()})
-            else:
-                criteria.extend([
-                    {'Tags': {"$regex": '<{}>'.format(keyword),
-                              "$options" :'i'}},
-                    {'Title': {"$regex": '\b{}\b'.format(keyword),
-                              "$options" :'i'}},
-                    {'Body': {"$regex": '\b{}\b'.format(keyword),
-                              "$options" :'i'}},
-                ])
-        questions = self.posts.find({
-            '$or': criteria,
+            """if len(keyword) >= 3:
+                questions = self.posts.find({'$text': {'$search': keyword}, 'PostTypeId': '1'})
+            else:"""
+            regular_exp = re.compile('\\b' + keyword + '\\b', re.IGNORECASE)
+            questions = self.posts.find({
+            '$or': [
+                {'Title' : regular_exp},
+                {'Body' : regular_exp},
+                {'Tags' : regular_exp}
+                ],
             'PostTypeId': '1'
-        })
-        return list(questions)
+            })
+        for question in questions:
+            matching_questions.append(question)
+        print(len(matching_questions))
+        res = []
+        [res.append(x) for x in matching_questions if x not in res]
+        return res
 
     def find_answers(self, pid):
         return self.posts.find({'ParentId': pid})
