@@ -51,7 +51,7 @@ class Database:
         post["ParentId"] = data['qid']
         self.posts.insert_one(post)
 
-    def find_questions2(self, keywords_list):
+    def find_questions(self, keywords_list):
         """searches the collection using given keywords
 
         Args:
@@ -80,8 +80,8 @@ class Database:
         res = []
         [res.append(x) for x in matching_questions if x not in res]
         return res
-
-    def find_questions(self, keywords_list):
+"""
+    def find_questions2(self, keywords_list):
         questions = self.posts.find({'PostTypeId': '1'})
 
         matching_questions = []
@@ -96,7 +96,7 @@ class Database:
                 break
         
         return matching_questions
-
+"""
 
     def find_answers(self, pid):
         return self.posts.find({'ParentId': pid})
