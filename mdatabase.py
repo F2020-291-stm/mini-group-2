@@ -258,11 +258,12 @@ class Database:
             count = False
         else:
             count = self.votes.count_documents({'UserId': self.uid, 'PostId': pid})
-
         if not count:
+            """
             post = self.get_post(pid)
             score = post['Score']
-            self.posts.update_one({'Id': pid}, {'$set': {'Score': (score+1)}})
+            """
+            self.posts.find_one_and_update({'Id': pid}, {'$inc': {'Score': 1}})
             dic_vote = {}
             dic_vote['Id'] = self.id_generator(self.votes)
             dic_vote['PostId'] = pid
