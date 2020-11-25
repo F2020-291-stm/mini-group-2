@@ -59,9 +59,17 @@ class Database:
         """
         criteria = []
         for keyword in keywords_list:
-            criteria.append({'Terms': keyword.lower()})
-            criteria.append({'Tags': {"$regex": '<{}>'.format(keyword),
-                              "$options" :'i'}})
+            if (len(keyword) > 2):
+                criteria.append({'Terms': keyword.lower()})
+            else:
+                criteria.extend([
+                    {'Tags': {"$regex": '<{}>'.format(keyword),
+                              "$options" :'i'}},
+                    {'Title': {"$regex": '\b{}\b'.format(keyword),
+                              "$options" :'i'}},
+                    {'Body': {"$regex": '\b{}\b'.format(keyword),
+                              "$options" :'i'}},
+                ])
         questions = self.posts.find({
             '$or': criteria,
             'PostTypeId': '1'
@@ -149,17 +157,11 @@ class Database:
             exists = False
             tag = self.tags.find_one({'TagName': tag})
             if tag is not None:
-                exists = True
-                count = tag['Count']
-
-            if exists:
-                #update count by 1
-                self.tags.update_one({'TagName': tag}, {'$set': {'Count':(count+1)}}) 
+                self.tags.update_one({'TagName': tag}, {'$set': {'Count': tag['Count']+1}}) 
             else:
                 #insert new tag
                 Id = self.id_generator(self.tags)
-                dic_tag = {"Id":Id, "TagName":tag, "Count":0}
-                self.tags.insert_one(dic_tag)
+                self.tags.insert_one({"Id":Id, "TagName":tag, "Count":0})
 
     def up_vote(self, database, uid, pid):
         """
@@ -217,17 +219,17 @@ class Database:
         Returns:
             str: contains the generated id
         """
-        # max_id = collection.aggregate(
-        #     [
-        #         {'$replaceWith': {'$toInt': '$Id'}},
-        #         {
-        #             '$group': {
-        #                 "_id": None,
-        #                 "max_id": {'$max':  '$Id'}
-        #             }
-        #         }
-        #     ]
-        # )
-        max_id ="1"
+        max_id = collection.aggregate(
+            [
+                {'$replaceWith': {'$toInt': '$Id'}},
+                {
+                    '$group': {
+                        "_id": None,
+                        "max_id": {'$max':  '$Id'}
+                    }
+                }
+            ]
+        )
 
-        return str(int(max_id)+1)
+        for id in max_id:
+            return str(max_id+1)
