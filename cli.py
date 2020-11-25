@@ -141,6 +141,16 @@ def choose_question(posts, show_next, show_prev):
     return prompt(_SELECT_FORM)['post']
 
 def choose_answer(posts, show_next, show_prev):
+    """Choose an answer from a list of posts
+
+    Args:
+        posts (list(dict)): Post list
+        show_next (bool): show "Show More"
+        show_prev (bool): show "Go Back"
+
+    Returns:
+        str: post id
+    """
     print("{:<2}|{:<30}|{:<8}|{:<80}".format('  ', 'Date', 'Score', 'Body'))
     display = []
     for post in posts:
@@ -164,6 +174,14 @@ def choose_answer(posts, show_next, show_prev):
     return prompt(_SELECT_FORM)['post']
 
 def action_menu_select(is_question):
+    """GIves user an action select
+
+    Args:
+        is_question (bool): show question actions
+
+    Returns:
+        str: action
+    """
     _ACTION_MENU[0]['choices'] = []
 
     if is_question:
