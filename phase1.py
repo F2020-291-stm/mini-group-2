@@ -6,9 +6,7 @@ import re
 
 term_rule = re.compile(r"(?<!\w)\w{3,20}(?!\w)")
 
-port = 27017
-
-def build_collection(cname):
+def build_collection(cname, port):
     """Builds a database collection based on a json file in the directory
 
     Args:
@@ -32,7 +30,7 @@ def build_collection(cname):
     print("Inserted {} of {} documents into {}\n".format(db[cname].count_documents({}), len(documents), cname))
 
 
-def build_termed_collection(cname):
+def build_termed_collection(cname, port):
     print("Building collection: {}".format(cname))
 
     # Extract documents from file
@@ -88,12 +86,12 @@ def extract_3plus_letter_words(text):
         words.add(item.group(0).lower())
     return words
 
-def build_database():
+def build_database(port):
     # Build all collections using threads to reduce time
     processes = []
-    processes.append(Process(target=build_termed_collection, args=('Posts',)))
-    processes.append(Process(target=build_collection, args=('Tags',)))
-    processes.append(Process(target=build_collection, args=('Votes',)))
+    processes.append(Process(target=build_termed_collection, args=('Posts', port)))
+    processes.append(Process(target=build_collection, args=('Tags', port)))
+    processes.append(Process(target=build_collection, args=('Votes', port)))
 
     # Run all threads then wait for them to complete
     for process in processes:
@@ -109,8 +107,7 @@ if __name__ == "__main__":
         print("No valid database port given, exiting...")
         exit()
     
-    port = int(argv[1])
-    build_database()
+    build_database(int(argv[1]))
 
 
     
