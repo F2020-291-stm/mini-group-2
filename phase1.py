@@ -45,7 +45,7 @@ def build_termed_collection(cname, port):
     db.drop_collection(cname)
 
     for document in documents:
-        extract_terms(documents)
+        extract_terms(document)
 
     print("Creating indexes for {}".format(cname))
     db[cname].create_index([('Terms', 1)])
