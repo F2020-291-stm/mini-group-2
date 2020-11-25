@@ -81,7 +81,7 @@ def action_menu(database, pid, is_question=True):
         list_answers(database, pid)
 
     elif response == 'Upvote':
-        if database.up_vote(database, pid):
+        if database.up_vote(pid):
             print("You upvoted this post!\n")
         else:
             print("You have already upvoted this post\n")

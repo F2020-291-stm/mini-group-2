@@ -62,7 +62,7 @@ class Database:
         """
         matching_questions = []
         for keyword in keywords_list:
-            if len(keyword) >= 100000:
+            if len(keyword) >= 3:
                 questions = self.posts.find({'Terms': keyword, 'PostTypeId': '1'})
             else:
                 regular_exp = re.compile('\\b' + keyword + '\\b', re.IGNORECASE)
@@ -251,12 +251,15 @@ class Database:
         self.votes.insert_one(dic_vote)
     '''
 
-    def up_vote(self, uid, pid):
+    def up_vote(self, pid):
         #vote = self.votes.find({'UserId': uid, 'PostId': pid})
         #count = 0 
         #for obj in vote:
         #    count += 1
-        count = self.votes.count_documents({'UserId': uid, 'PostId': pid})
+        if self.uid is None:
+            count = False
+        else:
+            count = self.votes.count_documents({'UserId': self.uid, 'PostId': pid})
 
         if not count:
             post = self.get_post(pid)
@@ -268,8 +271,8 @@ class Database:
             dic_vote['PostId'] = pid
             dic_vote['VoteTypeId'] = "2"
             dic_vote['CreationDate'] = datetime.now()
-            if uid != "":
-                dic_vote["UserId"] = uid
+            if self.uid is not None:
+                dic_vote["UserId"] = self.uid
             self.votes.insert_one(dic_vote)
 
         return (not count)
