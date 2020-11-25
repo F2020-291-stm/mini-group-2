@@ -81,8 +81,10 @@ def action_menu(database, pid, is_question=True):
         list_answers(database, pid)
 
     elif response == 'Upvote':
-        database.up_vote(database, pid)
-        print("You upvoted this post!\n")
+        if database.up_vote(pid):
+            print("You upvoted this post!\n")
+        else:
+            print("You have already upvoted this post\n")
 
 def list_answers(database, pid):
     """Lists all the answers for a post

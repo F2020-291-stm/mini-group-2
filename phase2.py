@@ -7,6 +7,7 @@ if __name__ == "__main__":
     #    exit()
     #database = mdatabase.Database(int(argv[1]))
     database = mdatabase.Database(22017)
+    menus.user_login(database)
     menus.master_menu(database)
 
 

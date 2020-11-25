@@ -51,7 +51,7 @@ class Database:
         post["ParentId"] = data['qid']
         self.posts.insert_one(post)
 
-    def find_questions2(self, keywords_list):
+    def find_questions(self, keywords_list):
         """searches the collection using given keywords
 
         Args:
@@ -80,8 +80,7 @@ class Database:
         res = []
         [res.append(x) for x in matching_questions if x not in res]
         return res
-
-    def find_questions(self, keywords_list):
+    def find_questions2(self, keywords_list):
         questions = self.posts.find({'PostTypeId': '1'})
 
         matching_questions = []
@@ -96,7 +95,6 @@ class Database:
                 break
         
         return matching_questions
-
 
     def find_answers(self, pid):
         return self.posts.find({'ParentId': pid})
@@ -251,21 +249,32 @@ class Database:
         self.votes.insert_one(dic_vote)
     '''
 
-    def up_vote(self, uid, pid):
-        exists = self.votes.find({'UserId': uid, 'PostId': pid})
-        if exists is None:
+    def up_vote(self, pid):
+        #vote = self.votes.find({'UserId': uid, 'PostId': pid})
+        #count = 0 
+        #for obj in vote:
+        #    count += 1
+        if self.uid is None:
+            count = False
+        else:
+            count = self.votes.count_documents({'UserId': self.uid, 'PostId': pid})
+
+        if not count:
             post = self.get_post(pid)
             score = post['Score']
             self.posts.update_one({'Id': pid}, {'$set': {'Score': (score+1)}})
-
             dic_vote = {}
             dic_vote['Id'] = self.id_generator(self.votes)
             dic_vote['PostId'] = pid
             dic_vote['VoteTypeId'] = "2"
             dic_vote['CreationDate'] = datetime.now()
-            if uid != "":
-                dic_vote["UserId"] = uid
+            if self.uid is not None:
+                dic_vote["UserId"] = self.uid
             self.votes.insert_one(dic_vote)
+
+        return (not count)
+
+        
 
 
     def id_generator2(self, collection):
