@@ -16,59 +16,39 @@ class Database:
         self.posts = db["Posts"]
         self.votes = db["Votes"]
         self.tags = db["Tags"]
+        self.uid = None
 
     def use_uid(self, uid):
         self.uid = uid
 
-    def build_post(self, post):
-        dic_post = {}
-        dic_post["Id"] = self.id_generator(self.posts)
-        dic_post["CreationDate"] = datetime.now()
-        dic_post["ContentLicense"] = "CC BY-SA 2.5"
+    def build_post(self, data):
+        post = {}
+        post["Id"] = self.id_generator(self.posts)
+        post["CreationDate"] = datetime.now()
+        post["ContentLicense"] = "CC BY-SA 2.5"
         if self.uid is not None:
-            dic_post["OwnerUserId"] = uid
+            post["OwnerUserId"] = self.uid
 
-        dic_post["Body"] = "<p>" + post["body"] + "</p>\n"
-        dic_post["Title"] = post["title"]
-        if len(post['tags']) > 0:
-            dic_post["Tags"] = "<" + "><".join(post["tags"]) + ">"
-        
-        return dic_post
+        post["Body"] = "<p>" + data["body"] + "</p>\n"
+        post["Score"] = 0
 
-    # Depricated (pls remove)
-    def create_post(self, post):
-        """creates a post and inserts into the given dictionary
-
-        Args:
-            post (post): A dictionary containing all the posts
-        """
-        dic_post = {}
-        dic_post["Id"] = self.id_generator(self.posts)
-        dic_post["PostTypeId"] = post["type"]
-        if post["type"] == "2":
-            dic_post["ParentId"] = post['qid']
-        dic_post["CreationDate"] = datetime.now()
-        dic_post["ContentLicense"] = "CC BY-SA 2.5"
-        if self.uid is not None:
-            dic_post["OwnerUserId"] = uid
-
-        dic_post["Body"] = "<p>" + post["body"] + "</p>\n"
-        dic_post["Title"] = post["title"]
-        if len(post['tags']) > 0:
-            dic_post["Tags"] = "<" + "><".join(post["tags"]) + ">"
-
-        self.posts.insert_one(dic_post)
+        return post
     
-    def post_question(self, post):
-        # TODO
-        dic_post["PostTypeId"] = '2'
+    def post_question(self, data):
+        post = self.build_post(data)
+        post["Title"] = data["title"]
+        if len(data['tags']) > 0:
+            post["Tags"] = "<" + "><".join(data["tags"]) + ">"
+        post["PostTypeId"] = '1'
+        self.posts.insert_one(post)
 
-    def post_answer(self, post):
-        # TODO
-        dic_post["PostTypeId"] = '1'
+    def post_answer(self, data):
+        post = self.build_post(data)
+        post["PostTypeId"] = '2'
+        post["ParentId"] = data['qid']
+        self.posts.insert_one(post)
 
-
-    def search(self, keywords_list):
+    def find_questions(self, keywords_list):
         """searches the collection using given keywords
 
         Args:
@@ -77,31 +57,18 @@ class Database:
         Returns:
             list: list of cursors containing the results of the search
         """
-        matching_questions = []
+        criteria = []
         for keyword in keywords_list:
-            if len(keyword) >= 3:
-                questions = self.posts.find({'$text': {'$search': keyword}, 'PostTypeId': '1'})
-            else:
-                regular_exp = re.compile('\\b' + keyword + '\\b', re.IGNORECASE)
-                questions = self.posts.find({
-                    '$or': [
-                        {'Title' : regular_exp},
-                        {'Body' : regular_exp},
-                        {'Tags' : regular_exp}
-                    ],
-                    'PostTypeId': '1'
-                })
-            for question in questions:
-                matching_questions.append(question)
-        print(len(matching_questions))
-        res = []
-        [res.append(x) for x in matching_questions if x not in res]
-        return res
+            criteria.append({'Terms': keyword.lower()})
+            criteria.append({'Tags': {"$regex": '<{}>'.format(keyword),
+                              "$options" :'i'}})
+        questions = self.posts.find({
+            '$or': criteria,
+            'PostTypeId': '1'
+        })
+        return list(questions)
 
     def find_answers(self, pid):
-        #Retrieve all answers that answer pid
-        #How?
-        #Find all posts whose 'ParentId' is pid
         return self.posts.find({'ParentId': pid})
 
     def get_post(self, pid):
@@ -113,9 +80,9 @@ class Database:
         Returns:
             Cursor object: returns tyhe post as a cursor object
         """
-        return self.posts.find_one({'Id':pid})
+        return self.posts.find_one_and_update({'Id':pid}, {'$inc': {'ViewCount':1}})
 
-    def get_user_posts(self, uid):
+    def get_user_report(self, uid):
         """Retrieve all posts made by user uid
 
         Args:
@@ -124,8 +91,49 @@ class Database:
         Returns:
             [list]: a list of Cursor objects 
         """
+        report = {'qcount': 0, 'qavg': 0, 'acount': 0, 'aavg': 0, 'vcount': 0}
+        for question_report in self.posts.aggregate(
+            [
+                {'$match': {'OwnerUserId':uid, 'PostTypeId':'1'}},
+                {
+                    '$group': {
+                        '_id': None,
+                        'count': {'$sum': 1},
+                        'avg': {'$avg': '$Score'}
+                    }
+                }
+            ]
+        ):
+            report['qcount'] = question_report['count']
+            report['qavg'] = question_report['avg']
+            break
         
-        return self.posts.find({'Id':uid})
+        for answer_report in self.posts.aggregate(
+            [
+                {'$match': {'OwnerUserId':uid, 'PostTypeId':'2'}},
+                {
+                    '$group': {
+                        '_id': None,
+                        'count': {'$sum': 1},
+                        'avg': {'$avg': '$Score'}
+                    }
+                }
+            ]
+        ):
+            report['acount'] = answer_report['count']
+            report['aavg'] = answer_report['avg']
+            break
+
+        for vote_report in self.votes.aggregate(
+            [
+                {'$match':{'UserId':uid}},
+                {'$count': 'count'}
+            ]
+        ):
+            report['vcount'] = vote_report['count']
+            break
+
+        return report
 
     def tag_updater(self, tags):
         """given a list of tags, check if that tag is in the database 
@@ -182,16 +190,6 @@ class Database:
             dic_vote["UserId"] = uid
         self.votes.insert_one(dic_vote)
 
-    def up_view(self, pid):
-        """increases the viewcount
-
-        Args:
-            pid (str): the id of post that is viewed
-        """
-        post = self.get_post(pid)
-        views = post['ViewCount']
-        self.posts.update_one({'Id': pid}, {'$set': {'ViewCount':(views+1)}})
-
     def get_user_received_votes(self, uid):
         """
         Find all posts made by uid, 
@@ -219,17 +217,17 @@ class Database:
         Returns:
             str: contains the generated id
         """
-        max_id = collection.aggregate(
-            [
-                {
-                    '$group':
-                        {
-                            "max_id": {
-                                '$max': '$Id'
-                            }
-                        }
-                }
-            ]
-        )['max_id']
+        # max_id = collection.aggregate(
+        #     [
+        #         {'$replaceWith': {'$toInt': '$Id'}},
+        #         {
+        #             '$group': {
+        #                 "_id": None,
+        #                 "max_id": {'$max':  '$Id'}
+        #             }
+        #         }
+        #     ]
+        # )
+        max_id ="1"
 
         return str(int(max_id)+1)
